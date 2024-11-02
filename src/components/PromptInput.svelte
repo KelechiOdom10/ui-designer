@@ -1,16 +1,15 @@
 <script lang="ts">
-  export let value = "";
+  import type { HTMLTextareaAttributes } from "svelte/elements";
+
+  let { value = $bindable() }: HTMLTextareaAttributes = $props();
 </script>
 
-<div class="space-y-2">
-  <label for="design-prompt" class="block text-sm font-medium text-gray-700">
-    What would you like to design?
-  </label>
+<label class="label">
+  <span class="label-text">What would you like to design?</span>
   <textarea
-    id="design-prompt"
-    bind:value
-    class="textarea"
+    class="textarea p-1"
     rows="4"
-    placeholder="Describe the component or section you want to create..."
+    bind:value
+    placeholder="Lorem ipsum dolor sit amet consectetur adipisicing elit."
   ></textarea>
-</div>
+</label>
