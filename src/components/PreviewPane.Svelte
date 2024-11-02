@@ -1,6 +1,7 @@
 <script lang="ts">
   import { Layout } from "lucide-svelte";
-  import type { GeneratedComponent } from "../types/generation";
+  import type { GeneratedComponent } from "~/types/app";
+
   interface Props {
     generated: GeneratedComponent | null;
   }
@@ -10,7 +11,7 @@
 
 <div class="h-full bg-surface-900 rounded-lg p-4">
   {#if generated}
-    <div class="bg-white rounded-lg shadow-lg p-6 h-full overflow-auto">
+    <div class="bg-surface-900 rounded-lg shadow-lg p-6 h-full overflow-auto">
       {@html generated.preview}
     </div>
   {:else}
