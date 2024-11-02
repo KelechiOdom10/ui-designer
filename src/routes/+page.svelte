@@ -2,14 +2,14 @@
   import PromptInput from "~/components/PromptInput.svelte";
   import StyleSelector from "~/components/StyleSelector.svelte";
   import PreviewPane from "~/components/PreviewPane.svelte";
-  import type { DesignStyle, GeneratedComponent } from "~/types/app";
+  import type { DesignStyle, GeneratedDesign } from "~/types/app";
 
   import { createMutation } from "@tanstack/svelte-query";
   import { generateDesign } from "~/lib/api";
 
   let prompt = $state("");
-  let style = $state<DesignStyle>("modern");
-  let generated = $state<GeneratedComponent | null>(null);
+  let style = $state<DesignStyle>("artistic");
+  let generated = $state<GeneratedDesign | null>(null);
 
   const generateDesignMutation = createMutation({
     mutationFn: generateDesign,
