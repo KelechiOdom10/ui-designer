@@ -5,9 +5,13 @@
   let { value = $bindable("modern"), ...rest }: HTMLSelectAttributes = $props();
 
   const styles: Array<{ value: DesignStyle; label: string }> = [
-    { value: "modern", label: "Modern" },
-    { value: "minimal", label: "Minimal" },
-    { value: "playful", label: "Playful" }
+    { value: "artistic", label: "Artistic" },
+    { value: "brutalist", label: "Brutalist" },
+    { value: "editorial", label: "Editorial" },
+    { value: "experiential", label: "Experiential" },
+    { value: "maximalist", label: "Maximalist" },
+    { value: "professional", label: "Professional" },
+    { value: "retro", label: "Retro" }
   ];
 </script>
 
