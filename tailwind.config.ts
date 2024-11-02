@@ -7,17 +7,14 @@ import * as themes from "@skeletonlabs/skeleton/themes";
 export default {
   content: [
     "./src/**/*.{html,js,svelte,ts}",
-    join(
-      require.resolve("@skeletonlabs/skeleton-svelte"),
-      "../**/*.{html,js,svelte,ts}"
-    ),
+    join(require.resolve("@skeletonlabs/skeleton-svelte"), "../**/*.{html,js,svelte,ts}")
   ],
   theme: {
-    extend: {},
+    extend: {}
   },
   plugins: [
     skeleton({
-      themes: [themes.cerberus, themes.nouveau],
-    }),
-  ],
+      themes: [themes.cerberus, themes.nouveau]
+    })
+  ]
 } satisfies Config;
