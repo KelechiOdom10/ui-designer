@@ -1,9 +1,9 @@
 <script lang="ts">
   import { Layout } from "lucide-svelte";
-  import type { GeneratedComponent } from "~/types/app";
+  import type { GeneratedDesign } from "~/types/app";
 
   interface Props {
-    generated: GeneratedComponent | null;
+    generated: GeneratedDesign | null;
   }
 
   let { generated }: Props = $props();
