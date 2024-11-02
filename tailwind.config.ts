@@ -3,6 +3,8 @@ import type { Config } from "tailwindcss";
 import { join } from "path";
 import { skeleton } from "@skeletonlabs/skeleton/plugin";
 import * as themes from "@skeletonlabs/skeleton/themes";
+import forms from "@tailwindcss/forms";
+import typography from "@tailwindcss/typography";
 
 export default {
   content: [
@@ -13,6 +15,8 @@ export default {
     extend: {}
   },
   plugins: [
+    forms,
+    typography,
     skeleton({
       themes: [themes.cerberus, themes.nouveau]
     })
