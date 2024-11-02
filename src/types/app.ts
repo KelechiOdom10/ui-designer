@@ -1,18 +1,24 @@
-export type DesignStyle = "modern" | "minimal" | "playful" | "corporate" | "luxurious";
+import type { StyleEnum } from "~/server/routes/design";
+
+export type DesignStyle = typeof StyleEnum.static;
 
 export interface DesignPrompt {
   prompt: string;
   style: DesignStyle;
 }
 
-export interface GeneratedComponent {
+export interface GeneratedDesign {
   markup: string; // The actual HTML/Svelte markup
   preview: string; // Sanitized preview HTML
-  css?: string; // Additional CSS if needed
-  metadata?: {
+  css: string; // Additional CSS if needed
+  metadata: {
     generatedAt: string;
     promptId: string;
     style: DesignStyle;
+    modelInfo: string;
+    promptTokens: number;
+    completionTokens: number;
+    processingTime: number;
   };
 }
 

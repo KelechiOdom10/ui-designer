@@ -1,12 +1,14 @@
 import { Elysia, t } from "elysia";
 import { DesignGeneratorService } from "../services/generator";
 
-const StyleEnum = t.Enum({
-  modern: "modern",
-  minimal: "minimal",
-  playful: "playful",
-  corporate: "corporate",
-  luxurious: "luxurious"
+export const StyleEnum = t.Enum({
+  editorial: "editorial",
+  artistic: "artistic",
+  brutalist: "brutalist",
+  experiential: "experiential",
+  retro: "retro",
+  maximalist: "maximalist",
+  professional: "professional"
 });
 
 export const designRoutes = new Elysia().post(
