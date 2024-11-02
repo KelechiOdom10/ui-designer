@@ -4,6 +4,7 @@ import { CreativeUIPromptBuilder } from "./prompt-builder";
 import parse from "node-html-parser";
 import postcss from "postcss";
 import { type ModelConfig, DEFAULT_MODEL_CONFIG } from "../config/model-config";
+import { logger } from "../utils/logger";
 
 export class DesignGeneratorService {
   private promptBuilder: CreativeUIPromptBuilder;
@@ -15,6 +16,7 @@ export class DesignGeneratorService {
       ...DEFAULT_MODEL_CONFIG,
       ...modelConfig
     };
+    logger.info("Design Generator initialized", this.modelConfig);
   }
 
   async generateDesign(input: {
@@ -25,27 +27,37 @@ export class DesignGeneratorService {
     const startTime = performance.now();
 
     try {
+      logger.startGeneration(input.prompt);
       // Build the creative prompt
       const prompt = this.promptBuilder.buildPrompt(input.prompt, input.style);
       const systemPrompt = this.promptBuilder.buildSystemPrompt();
 
+      logger.model("Generating with AI model...");
       // Generate design using local model
       const response = await this.generateFromLocalModel(prompt, systemPrompt);
+      logger.debug("Raw model response received", {
+        tokens: response.promptTokens + response.completionTokens
+      });
+      logger.parsing("Processing generated code...");
 
       // Extract HTML and CSS from response
       const { html, css } = this.parseGeneratedCode(response.content);
+      logger.validation("Checking output...");
 
       // Validate before processing
-      await this.validateGeneration(html, css);
+      try {
+        await this.validateGeneration(html, css);
+        logger.success("Validation passed");
+      } catch (validationError) {
+        logger.warning("Validation warnings", validationError);
+      }
 
+      logger.info("Processing final output...");
       // Post-process the generated code
       const processedHtml = this.processHtml(html);
       const processedCss = this.processCss(css);
 
-      // Validate after processing
-      await this.validateGeneration(processedHtml, processedCss);
-
-      return {
+      const result = {
         markup: processedHtml,
         css: processedCss,
         preview: processedHtml, // In reality, you'd want to sanitize this HTML before displaying it
@@ -59,8 +71,14 @@ export class DesignGeneratorService {
           processingTime: performance.now() - startTime
         }
       };
+
+      logger.success("Generation completed", {
+        time: `${Math.round(result.metadata.processingTime)}ms`,
+        tokens: result.metadata.promptTokens + result.metadata.completionTokens
+      });
+      return result;
     } catch (error) {
-      console.error("Design generation failed:", error);
+      logger.error("Design generation failed", error);
       throw this.handleError(error);
     }
   }
@@ -100,12 +118,14 @@ export class DesignGeneratorService {
   }
 
   private parseGeneratedCode(content: string): { html: string; css: string } {
+    logger.parsing("Looking for code sections...");
     // First try to find marked sections
     const htmlMatch = content.match(/<!-- HTML -->([\s\S]*?)(?=<!-- CSS -->|$)/);
     const cssMatch = content.match(/<!-- CSS -->([\s\S]*?)$/);
 
     // If we find marked sections, use them
     if (htmlMatch && cssMatch) {
+      logger.success("Found marked sections");
       return {
         html: htmlMatch[1].trim(),
         css: cssMatch[1].trim()
@@ -113,6 +133,7 @@ export class DesignGeneratorService {
     }
 
     // Otherwise, try to find HTML and CSS by looking for code blocks
+    logger.warning("Marked sections not found, trying alternative parsing");
     const codeBlocks = content.match(/```(?:html|css)?\n([\s\S]*?)```/g);
 
     if (codeBlocks && codeBlocks.length >= 2) {
@@ -125,6 +146,7 @@ export class DesignGeneratorService {
         .replace(/```$/, "")
         .trim();
 
+      logger.success("Code blocks found", { html, css });
       return { html, css };
     }
 
