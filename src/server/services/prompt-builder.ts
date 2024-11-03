@@ -196,6 +196,19 @@ FORMAT REQUIREMENTS:
    - Define hover/focus states
    - Follow mobile-first approach
 
+[FINAL REMINDER]
+1. YOU MUST WRAP YOUR ENTIRE RESPONSE IN <OUTPUT> TAGS
+2. INCLUDE BOTH HTML AND CSS SECTIONS WITH PROPER COMMENTS
+3. ALL SELECTORS MUST BE PREFIXED WITH .design-preview
+
+CONFIRM UNDERSTANDING BY PROVIDING RESPONSE IN CORRECT FORMAT:
+<OUTPUT>
+<!-- HTML -->
+... your implementation ...
+<!-- CSS -->
+... your styles ...
+</OUTPUT>
+
 Push creative boundaries while keeping the interface intuitive. Focus on creating memorable, unique experiences that serve the content and user needs. 
 Remember: Return ONLY the coded implementation within <OUTPUT> tags. Do not include explanations or additional text.`.trim();
   }
@@ -222,6 +235,14 @@ You must ALWAYS return responses in this exact format:
 /* Your component styles */
 /* Your responsive styles */
 </OUTPUT>
+
+[VALIDATION CHECKLIST]
+Before submitting your response, verify:
+✓ Entire response is wrapped in <OUTPUT> tags
+✓ Contains <!-- HTML --> and <!-- CSS --> sections
+✓ All selectors are prefixed with .design-preview
+✓ No text outside of <OUTPUT> tags
+
 
 CRITICAL REQUIREMENTS:
 1. Always wrap the entire response in <OUTPUT> tags
