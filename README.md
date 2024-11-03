@@ -81,6 +81,10 @@ ollama pull codellama
 
 - [@KelechiOdom10](https://github.com/KelechiOdom10)
 
+## License
+
+[MIT](https://choosealicense.com/licenses/mit/)
+
 ## Contributing
 
 Contributions are always welcome! Please feel free to submit a Pull Request.
