@@ -2,7 +2,8 @@
 
 A local-first design tool that generates unique, creative web interfaces using AI. Built with modern web technologies and focused on rapid design ideation and experimentation.
 
-This is just a POC, the designs it produces are absolutely terrible. Just wanted to see if I could do this myself.
+> [!IMPORTANT]
+> Disclamer: This is just a POC, the designs it produces are absolutely terrible. Just wanted to see if I could do this myself.
 
 <img width="1512" alt="Screenshot 2024-11-03 at 14 25 11" src="https://github.com/user-attachments/assets/088aaba2-9039-4177-ba82-ea73ecc50a95">
 
