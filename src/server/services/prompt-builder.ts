@@ -1,3 +1,5 @@
+import { logger } from "../utils/logger";
+
 export class CreativeUIPromptBuilder {
   private creativeDirections = {
     editorial: {
@@ -113,11 +115,15 @@ export class CreativeUIPromptBuilder {
   }
 
   buildPrompt(userPrompt: string, direction: keyof typeof this.creativeDirections): string {
+    logger.debug("Building prompt", { userPrompt, direction });
+
     const style = this.creativeDirections[direction];
     const creativeSuggestions = this.generateCreativeSuggestions(userPrompt);
 
+    logger.debug("Generated creative suggestions", { suggestions: creativeSuggestions });
+
     return `
-Create an innovative, boundary-pushing web interface that challenges traditional design patterns while maintaining intuitive user experience.
+Create an innovative, boundary-pushing web interface that challenges traditional design patterns while maintaining intuitive user experience with these strict requirements:
 
 USER REQUEST: ${userPrompt}
 
@@ -175,23 +181,59 @@ DESIGN CONSIDERATIONS:
    - Use motion to guide and delight
    - Build responsive interactions
 
-RESPONSE FORMAT:
-<!-- HTML -->
-[Experimental, semantic HTML structure]
+FORMAT REQUIREMENTS:
+1. Response must be wrapped in <OUTPUT> tags
+2. Must contain <!-- HTML --> and <!-- CSS --> sections
+3. HTML must:
+   - Use semantic HTML5 elements
+   - Include proper lang attribute
+   - Have descriptive alt texts
+   - Use BEM or similar naming convention
+4. CSS must:
+   - Include a reset section
+   - Use logical property names
+   - Include responsive breakpoints
+   - Define hover/focus states
+   - Follow mobile-first approach
 
-<!-- CSS -->
-[Creative CSS using modern features (transforms, masks, blend modes, etc.)]
-
-Push creative boundaries while keeping the interface intuitive. Focus on creating memorable, unique experiences that serve the content and user needs.`.trim();
+Push creative boundaries while keeping the interface intuitive. Focus on creating memorable, unique experiences that serve the content and user needs. 
+Remember: Return ONLY the coded implementation within <OUTPUT> tags. Do not include explanations or additional text.`.trim();
   }
 
   buildSystemPrompt(): string {
+    logger.info("Building system prompt");
     return `
 You are an innovative UI designer who pushes creative boundaries.
 Think beyond conventional patterns and create unique, memorable experiences.
 Use experimental approaches to typography, layout, and interaction.
 Balance artistic expression with intuitive user experience.
-Return only the HTML and CSS code, properly sectioned with comments.
+You must ALWAYS return responses in this exact format:
+
+<OUTPUT>
+<!-- HTML -->
+<!DOCTYPE html>
+<html lang="en">
+  <!-- Your semantic HTML here -->
+</html>
+
+<!-- CSS -->
+/* CSS Reset */
+/* Your base styles */
+/* Your component styles */
+/* Your responsive styles */
+</OUTPUT>
+
+CRITICAL REQUIREMENTS:
+1. Always wrap the entire response in <OUTPUT> tags
+2. Always include HTML and CSS sections with exactly these comment markers
+3. Always use semantic HTML5 elements
+4. Always include a CSS reset
+5. Always include responsive styles with media queries
+6. Never include explanations or additional text
+7. Never include JavaScript
+8. Never include external resources or CDN links
+
+Violation of these requirements is not acceptable.
 `.trim();
   }
 }
