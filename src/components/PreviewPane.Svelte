@@ -30,13 +30,12 @@
       class="bg-surface-900 rounded-lg shadow-lg p-6 h-full overflow-auto relative"
       transition:fade
     >
-      <!-- Create a style element and bind it to our ref -->
-      <style bind:this={styleElement}></style>
-
-      <!-- Create a scoped container for the preview -->
-      <div class="preview-container">
-        {@html previewContent}
-      </div>
+      <iframe
+        srcDoc={previewContent}
+        style="width: 100%; height: 100%; border: none;"
+        title="Design Preview"
+        sandbox="allow-scripts"
+      ></iframe>
 
       {#if isGenerating}
         <div
@@ -105,11 +104,3 @@
     </div>
   {/if}
 </div>
-
-<style>
-  /* Scope the preview container to avoid conflicts */
-  :global(.preview-container) {
-    width: 100%;
-    height: 100%;
-  }
-</style>
