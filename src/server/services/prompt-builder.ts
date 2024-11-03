@@ -253,6 +253,7 @@ CRITICAL REQUIREMENTS:
 6. Never include explanations or additional text
 7. Never include JavaScript
 8. Never include external resources or CDN links
+9. Where we use images. reference a placeholder in https://placehold.co/
 
 Violation of these requirements is not acceptable.
 `.trim();
