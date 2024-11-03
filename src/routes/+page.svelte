@@ -8,6 +8,7 @@
 
   let prompt = $state("");
   let style = $state<DesignStyle>("artistic");
+  let isGenerating = $state(false);
   let generated = $state<GeneratedDesign | null>(null);
   let progress = $state<GenerationProgress | null>(null);
   let error = $state<string | null>(null);
@@ -17,6 +18,7 @@
       progress = null;
       generated = null;
       error = null;
+      isGenerating = true;
 
       try {
         for await (const update of generateDesign({ prompt, style })) {
@@ -44,11 +46,11 @@
       } catch (err) {
         error = err instanceof Error ? err.message : "An unknown error occurred";
         throw err;
+      } finally {
+        isGenerating = false;
       }
     }
   });
-
-  let isGenerating = $designMutation.isPending;
 
   function handleGenerate() {
     $designMutation.mutate({ prompt, style });
