@@ -13,25 +13,21 @@ export const StyleEnum = t.Enum({
 
 export const designRoutes = new Elysia().post(
   "/api/design/generate",
-  async ({ body }) => {
+  async function* ({ body, set }) {
+    set.headers["Content-Type"] = "text/event-stream";
+    set.headers["Cache-Control"] = "no-cache";
+    set.headers["Connection"] = "keep-alive";
+
     const generator = new DesignGeneratorService();
-    return await generator.generateDesign(body);
+
+    for await (const update of generator.generateDesign(body)) {
+      yield update;
+    }
   },
   {
     body: t.Object({
       prompt: t.String({ minLength: 1 }),
       style: StyleEnum
-    }),
-    response: t.Object({
-      markup: t.String(),
-      preview: t.String(),
-      metadata: t.Optional(
-        t.Object({
-          generatedAt: t.String(),
-          promptId: t.String(),
-          style: StyleEnum
-        })
-      )
     })
   }
 );

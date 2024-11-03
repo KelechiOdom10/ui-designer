@@ -1,5 +1,5 @@
 import { nanoid } from "nanoid";
-import type { DesignGenerationError, DesignStyle, GeneratedDesign } from "~/types/app";
+import type { DesignGenerationError, DesignStyle } from "~/types/app";
 import { CreativeUIPromptBuilder } from "./prompt-builder";
 import parse from "node-html-parser";
 import postcss from "postcss";
@@ -19,29 +19,45 @@ export class DesignGeneratorService {
     logger.info("Design Generator initialized", this.modelConfig);
   }
 
-  async generateDesign(input: {
-    prompt: string;
-    style: DesignStyle;
-    iterations?: number;
-  }): Promise<GeneratedDesign> {
+  async *generateDesign(input: { prompt: string; style: DesignStyle; iterations?: number }) {
     const startTime = performance.now();
 
     try {
       logger.startGeneration(input.prompt);
+
+      // Start event
+      yield { event: "start", data: { status: "started" } };
+
       // Build the creative prompt
+      yield { event: "progress", data: { stage: "preparing", progress: 0 } };
       const prompt = this.promptBuilder.buildPrompt(input.prompt, input.style);
       const systemPrompt = this.promptBuilder.buildSystemPrompt();
 
       logger.model("Generating with AI model...");
-      // Generate design using local model
-      const response = await this.generateFromLocalModel(prompt, systemPrompt);
-      logger.debug("Raw model response received", {
-        tokens: response.promptTokens + response.completionTokens
-      });
+      yield { event: "progress", data: { stage: "generating", progress: 20 } };
+
+      // Generate design using local model with streaming
+      for await (const chunk of this.generateFromLocalModel(prompt, systemPrompt)) {
+        yield {
+          event: "progress",
+          data: {
+            stage: "generating",
+            progress: 20 + chunk.percentage * 0.6,
+            partial: chunk.content
+          }
+        };
+      }
+
+      // Get the final content from the last chunk
+      const finalContent = await this.getFinalContent(prompt, systemPrompt);
+      logger.debug("Raw model response received");
       logger.parsing("Processing generated code...");
+      logger.info("Final content received", finalContent);
+
+      yield { event: "progress", data: { stage: "processing", progress: 80 } };
 
       // Extract HTML and CSS from response
-      const { html, css } = this.parseGeneratedCode(response.content);
+      const { html, css } = this.parseGeneratedCode(finalContent);
       logger.validation("Checking output...");
 
       // Validate before processing
@@ -52,6 +68,8 @@ export class DesignGeneratorService {
         logger.warning("Validation warnings", validationError);
       }
 
+      yield { event: "progress", data: { stage: "finalizing", progress: 90 } };
+
       logger.info("Processing final output...");
       // Post-process the generated code
       const processedHtml = this.processHtml(html);
@@ -60,32 +78,31 @@ export class DesignGeneratorService {
       const result = {
         markup: processedHtml,
         css: processedCss,
-        preview: processedHtml, // In reality, you'd want to sanitize this HTML before displaying it
+        preview: processedHtml,
         metadata: {
           generatedAt: new Date().toISOString(),
           promptId: nanoid(),
           style: input.style,
-          modelInfo: response.modelInfo,
-          promptTokens: response.promptTokens,
-          completionTokens: response.completionTokens,
           processingTime: performance.now() - startTime
         }
       };
 
+      yield { event: "complete", data: result };
+
       logger.success("Generation completed", {
-        time: `${Math.round(result.metadata.processingTime)}ms`,
-        tokens: result.metadata.promptTokens + result.metadata.completionTokens
+        time: `${Math.round(result.metadata.processingTime)}ms`
       });
-      return result;
     } catch (error) {
       logger.error("Design generation failed", error);
-      throw this.handleError(error);
+      yield {
+        event: "error",
+        data: this.handleError(error)
+      };
     }
   }
 
-  private async generateFromLocalModel(prompt: string, systemPrompt: string) {
+  private async *generateFromLocalModel(prompt: string, systemPrompt: string) {
     try {
-      // Using Ollama API format
       const response = await fetch(this.modelConfig.apiUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -95,7 +112,7 @@ export class DesignGeneratorService {
           temperature: this.modelConfig.temperature,
           top_p: this.modelConfig.topP,
           max_tokens: this.modelConfig.maxTokens,
-          stream: false
+          stream: true
         })
       });
 
@@ -103,40 +120,108 @@ export class DesignGeneratorService {
         throw new Error(`Model API error: ${response.statusText}`);
       }
 
-      const data = await response.json();
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error("No response body");
 
-      return {
-        content: data.response,
-        modelInfo: data.model,
-        promptTokens: data.prompt_eval_count,
-        completionTokens: data.eval_count
-      };
+      let content = "";
+      let totalTokens = 0;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = new TextDecoder().decode(value);
+        const data = JSON.parse(chunk);
+
+        content += data.response;
+        totalTokens += data.eval_count || 0;
+
+        yield {
+          content,
+          percentage: (totalTokens / (this.modelConfig.maxTokens ?? 0)) * 100
+        };
+      }
     } catch (error) {
       console.error("Local model generation failed:", error);
       throw error;
     }
   }
 
-  private parseGeneratedCode(content: string): { html: string; css: string } {
-    logger.parsing("Looking for code sections...");
-    // First try to find marked sections
-    const htmlMatch = content.match(/<!-- HTML -->([\s\S]*?)(?=<!-- CSS -->|$)/);
-    const cssMatch = content.match(/<!-- CSS -->([\s\S]*?)$/);
+  // Helper method to get final content for processing
+  private async getFinalContent(prompt: string, systemPrompt: string): Promise<string> {
+    const response = await fetch(this.modelConfig.apiUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: this.modelConfig.modelName,
+        prompt: `${systemPrompt}\n\n${prompt}`,
+        temperature: this.modelConfig.temperature,
+        top_p: this.modelConfig.topP,
+        max_tokens: this.modelConfig.maxTokens,
+        stream: false
+      })
+    });
 
-    // If we find marked sections, use them
-    if (htmlMatch && cssMatch) {
-      logger.success("Found marked sections");
-      return {
-        html: htmlMatch[1].trim(),
-        css: cssMatch[1].trim()
-      };
+    if (!response.ok) {
+      throw new Error(`Model API error: ${response.statusText}`);
     }
 
-    // Otherwise, try to find HTML and CSS by looking for code blocks
-    logger.warning("Marked sections not found, trying alternative parsing");
+    const data = await response.json();
+    return data.response;
+  }
+
+  private parseGeneratedCode(content: string): { html: string; css: string } {
+    logger.parsing("Starting code extraction");
+
+    // Extract content between <OUTPUT> tags
+    logger.debug("Looking for OUTPUT tags");
+    const outputMatch = content.match(/<OUTPUT>([\s\S]*?)<\/OUTPUT>/);
+    if (!outputMatch) {
+      logger.error("No OUTPUT tags found");
+      throw new Error("Invalid output format: Missing OUTPUT tags");
+    }
+
+    const output = outputMatch[1].trim();
+    logger.debug("Found OUTPUT content", { length: output.length });
+
+    // Extract HTML and CSS sections
+    logger.parsing("Extracting HTML and CSS sections");
+    const htmlMatch = output.match(/<!-- HTML -->([\s\S]*?)(?=<!-- CSS -->)/);
+    const cssMatch = output.match(/<!-- CSS -->([\s\S]*?)$/);
+
+    if (!htmlMatch || !cssMatch) {
+      logger.error("Missing required sections", {
+        hasHtml: !!htmlMatch,
+        hasCss: !!cssMatch
+      });
+      throw new Error("Invalid output format: Missing HTML or CSS sections");
+    }
+
+    const html = htmlMatch[1].trim();
+    const css = cssMatch[1].trim();
+
+    logger.success("Code extraction complete", {
+      htmlLength: html.length,
+      cssLength: css.length
+    });
+
+    // Fallback parsing if needed
+    if (!html || !css) {
+      logger.warning("Primary parsing failed, attempting fallback parsing");
+      return this.fallbackParsing(content);
+    }
+
+    return { html, css };
+  }
+
+  private fallbackParsing(content: string): { html: string; css: string } {
+    logger.debug("Starting fallback parsing");
+
+    // Try to find code blocks
     const codeBlocks = content.match(/```(?:html|css)?\n([\s\S]*?)```/g);
 
     if (codeBlocks && codeBlocks.length >= 2) {
+      logger.success("Found code blocks in fallback parsing");
       const html = codeBlocks[0]
         .replace(/```(?:html)?\n/, "")
         .replace(/```$/, "")
@@ -146,21 +231,29 @@ export class DesignGeneratorService {
         .replace(/```$/, "")
         .trim();
 
-      logger.success("Code blocks found", { html, css });
+      logger.info("Fallback parsing successful", {
+        htmlLength: html.length,
+        cssLength: css.length
+      });
       return { html, css };
     }
 
-    // If we find a complete HTML document, try to extract CSS from style tags
+    // Try to parse complete HTML document
     if (content.includes("<!DOCTYPE html>")) {
+      logger.debug("Attempting to parse complete HTML document");
       const htmlDoc = content.trim();
       const cssMatch = htmlDoc.match(/<style>([\s\S]*?)<\/style>/);
 
-      return {
-        html: htmlDoc,
-        css: cssMatch ? cssMatch[1].trim() : ""
-      };
+      if (cssMatch) {
+        logger.success("Successfully extracted CSS from style tags");
+        return {
+          html: htmlDoc,
+          css: cssMatch[1].trim()
+        };
+      }
     }
 
+    logger.error("All parsing attempts failed");
     throw new Error("Could not parse generated code into HTML and CSS sections");
   }
 
@@ -235,7 +328,7 @@ export class DesignGeneratorService {
 
       // Check for warnings
       if (result.warnings().length > 0) {
-        console.warn("CSS Warnings:", result.warnings());
+        logger.warning("CSS validation warnings", { warnings: result.warnings() });
       }
     } catch (error: any) {
       throw new Error(`CSS validation failed: ${error?.message}`);

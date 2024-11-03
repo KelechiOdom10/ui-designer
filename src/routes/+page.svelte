@@ -2,25 +2,64 @@
   import PromptInput from "~/components/PromptInput.svelte";
   import StyleSelector from "~/components/StyleSelector.svelte";
   import PreviewPane from "~/components/PreviewPane.svelte";
-  import type { DesignStyle, GeneratedDesign } from "~/types/app";
-
-  import { createMutation } from "@tanstack/svelte-query";
+  import type { DesignStyle, GeneratedDesign, GenerationProgress } from "~/types/app";
   import { generateDesign } from "~/lib/api";
+  import { createMutation } from "@tanstack/svelte-query";
 
   let prompt = $state("");
   let style = $state<DesignStyle>("artistic");
   let generated = $state<GeneratedDesign | null>(null);
+  let progress = $state<GenerationProgress | null>(null);
+  let error = $state<string | null>(null);
 
-  const generateDesignMutation = createMutation({
-    mutationFn: generateDesign,
-    onSuccess(data) {
-      generated = data;
+  const designMutation = createMutation({
+    mutationFn: async ({ prompt, style }: { prompt: string; style: DesignStyle }) => {
+      progress = null;
+      generated = null;
+      error = null;
+
+      try {
+        for await (const update of generateDesign({ prompt, style })) {
+          switch (update.event) {
+            case "start":
+              progress = {
+                stage: "preparing",
+                progress: 0
+              };
+              break;
+
+            case "progress":
+              progress = update.data;
+              break;
+
+            case "complete":
+              generated = update.data;
+              progress = null;
+              return update.data;
+
+            case "error":
+              throw new Error(update.data.message);
+          }
+        }
+      } catch (err) {
+        error = err instanceof Error ? err.message : "An unknown error occurred";
+        throw err;
+      }
     }
   });
 
-  const handleGenerate = () => $generateDesignMutation.mutate({ prompt: prompt, style });
+  let isGenerating = $designMutation.isPending;
 
-  const isGenerating = $generateDesignMutation.isPending;
+  function handleGenerate() {
+    $designMutation.mutate({ prompt, style });
+  }
+
+  function handleClear() {
+    generated = null;
+    progress = null;
+    error = null;
+    $designMutation.reset();
+  }
 </script>
 
 <div class="h-screen flex {isGenerating ? 'cursor-wait' : ''}">
@@ -40,20 +79,31 @@
 
       <StyleSelector bind:value={style} disabled={isGenerating} />
 
+      {#if error || $designMutation.error}
+        <div class="p-4 bg-surface-800 text-red-400 rounded-md">
+          {error ||
+            ($designMutation.error instanceof Error
+              ? $designMutation.error.message
+              : "An error occurred")}
+        </div>
+      {/if}
+
       <div class="flex flex-col gap-3">
         <button
           onclick={handleGenerate}
           disabled={isGenerating || !prompt}
-          class="btn preset-filled-primary-500 w-full {isGenerating ? 'animate-pulse' : ''}"
+          class="btn preset-filled-primary-500"
         >
           {#if isGenerating}
-            <span class="animate-spin mr-2">⟳</span>
+            <span class="inline-block animate-spin mr-2">⟳</span>
+            Generating...
+          {:else}
+            Generate Design
           {/if}
-          {isGenerating ? "Generating..." : "Generate Design"}
         </button>
 
         {#if generated}
-          <button class="btn preset-outlined-primary-500 w-full" onclick={() => (generated = null)}>
+          <button class="btn preset-outline-primary-500" onclick={handleClear}>
             Clear Result
           </button>
         {/if}
@@ -67,6 +117,6 @@
 
   <!-- Preview Panel -->
   <div class="flex-1 p-6">
-    <PreviewPane {generated} />
+    <PreviewPane {generated} {progress} />
   </div>
 </div>
